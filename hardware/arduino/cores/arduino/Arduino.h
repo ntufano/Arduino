@@ -181,6 +181,7 @@ extern const uint8_t PROGMEM digital_pin_to_timer_PGM[];
 #include "WCharacter.h"
 #include "WString.h"
 #include "HardwareSerial.h"
+#include "WHardwareTimer.h"
 
 uint16_t makeWord(uint16_t w);
 uint16_t makeWord(byte h, byte l);
@@ -197,6 +198,11 @@ long random(long);
 long random(long, long);
 void randomSeed(unsigned int);
 long map(long, long, long, long, long);
+
+#else
+
+// Needed here to allow initialization of timers.
+void __init_timers();
 
 #endif
 
