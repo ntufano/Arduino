@@ -43,12 +43,16 @@ class HardwareSerial : public Stream
     uint8_t _rxcie;
     uint8_t _udrie;
     uint8_t _u2x;
+    volatile size_t *_bufferingSize;
+    volatile uint8_t *_triggerChar;
+    int8_t *_buffered;
   public:
     HardwareSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer,
       volatile uint8_t *ubrrh, volatile uint8_t *ubrrl,
       volatile uint8_t *ucsra, volatile uint8_t *ucsrb,
       volatile uint8_t *udr,
-      uint8_t rxen, uint8_t txen, uint8_t rxcie, uint8_t udrie, uint8_t u2x);
+      uint8_t rxen, uint8_t txen, uint8_t rxcie, uint8_t udrie, uint8_t u2x,
+      volatile size_t *bufferingSize, volatile uint8_t *triggerChar, int8_t *buffered);
     void begin(unsigned long);
     void end();
     virtual int available(void);
@@ -57,6 +61,9 @@ class HardwareSerial : public Stream
     virtual void flush(void);
     virtual size_t write(uint8_t);
     using Print::write; // pull in write(str) and write(buf, size) from Print
+
+    virtual void buffer(const size_t s);
+    virtual void bufferUntil(const uint8_t c);
 };
 
 #if defined(UBRRH) || defined(UBRR0H)

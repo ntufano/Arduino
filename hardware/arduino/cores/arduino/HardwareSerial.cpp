@@ -88,7 +88,11 @@ inline void store_char(unsigned char c, ring_buffer *buffer)
 #else
   void serialEvent() __attribute__((weak));
   void serialEvent() {}
-  volatile static unsigned char serialEvent_flag = 0;
+  volatile static unsigned char serialEvent_reads = 0;        // R/W inside interrupt
+  volatile static unsigned char serialEvent_triggers = 0;     // R/W inside interrupt
+  volatile static size_t serialEvent_bufferingSize = 1;       // Read inside interrupt
+  volatile static uint8_t serialEvent_triggerChar = 0;        // Read inside interrupt
+  static int8_t serialEvent_buffered = 0;                     // Not used inside interrupt
   #define serialEvent_implemented
 #if defined(USART_RX_vect)
   SIGNAL(USART_RX_vect)
@@ -110,7 +114,10 @@ inline void store_char(unsigned char c, ring_buffer *buffer)
     #error UDR not defined
   #endif
     store_char(c, &rx_buffer);
-    serialEvent_flag = 1;
+    if (serialEvent_bufferingSize)
+      serialEvent_reads++;
+    else if (c == serialEvent_triggerChar)
+      serialEvent_triggers++;
   }
 #endif
 
@@ -161,14 +168,28 @@ inline void store_char(unsigned char c, ring_buffer *buffer)
 
 void serialEventRun(void)
 {
-  unsigned char flag, oldSREG;
+  unsigned char flag, oldSREG, reads, triggers;
 #ifdef serialEvent_implemented
   oldSREG = SREG;
   noInterrupts();
-  flag = serialEvent_flag;
-  serialEvent_flag = 0;
+  reads = serialEvent_reads;
+  triggers = serialEvent_triggers;
+  serialEvent_reads = 0;
+  serialEvent_triggers = 0;
   SREG = oldSREG;
-  if (flag) serialEvent();
+  // We are in fixed size blocks mode?
+  if (serialEvent_bufferingSize) {
+    serialEvent_buffered += reads;
+    // fire a serialEvent for every block received
+    while (serialEvent_buffered >= serialEvent_bufferingSize) {
+      serialEvent_buffered -= serialEvent_bufferingSize;
+      serialEvent();
+    }
+  } else {
+    // fire a serialEvent for every trigger received
+    while (triggers--)
+      serialEvent();
+  }
 #endif
 #ifdef serialEvent1_implemented
   oldSREG = SREG;
@@ -292,7 +313,8 @@ HardwareSerial::HardwareSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer,
   volatile uint8_t *ubrrh, volatile uint8_t *ubrrl,
   volatile uint8_t *ucsra, volatile uint8_t *ucsrb,
   volatile uint8_t *udr,
-  uint8_t rxen, uint8_t txen, uint8_t rxcie, uint8_t udrie, uint8_t u2x)
+  uint8_t rxen, uint8_t txen, uint8_t rxcie, uint8_t udrie, uint8_t u2x,
+  volatile size_t *bufferingSize, volatile uint8_t *triggerChar, int8_t *buffered)
 {
   _rx_buffer = rx_buffer;
   _tx_buffer = tx_buffer;
@@ -306,6 +328,17 @@ HardwareSerial::HardwareSerial(ring_buffer *rx_buffer, ring_buffer *tx_buffer,
   _rxcie = rxcie;
   _udrie = udrie;
   _u2x = u2x;
+
+  unsigned char oldSREG = SREG;
+  noInterrupts();
+  // Number of characters to wait before two consecutive calls to serialEvent function.
+  // If 0 the serialEvent function is called upon receiveing a bufferingUntilChar byte.
+  _bufferingSize = bufferingSize;
+  _triggerChar = triggerChar;
+  SREG = oldSREG;
+
+  // Counts the actual number of byte read and not processed from serialEvent function.
+  _buffered = buffered;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
@@ -415,12 +448,30 @@ size_t HardwareSerial::write(uint8_t c)
   return 1;
 }
 
+void HardwareSerial::buffer(const size_t s)
+{
+  unsigned char oldSREG = SREG;
+  noInterrupts();
+  *_bufferingSize = s;
+  *_buffered = 0;
+  SREG = oldSREG;
+}
+
+void HardwareSerial::bufferUntil(const uint8_t c)
+{
+  unsigned char oldSREG = SREG;
+  noInterrupts();
+  *_bufferingSize = 0;
+  *_triggerChar = c;
+  SREG = oldSREG;
+}
+
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
 #if defined(UBRRH) && defined(UBRRL)
-  HardwareSerial Serial(&rx_buffer, &tx_buffer, &UBRRH, &UBRRL, &UCSRA, &UCSRB, &UDR, RXEN, TXEN, RXCIE, UDRIE, U2X);
+  HardwareSerial Serial(&rx_buffer, &tx_buffer, &UBRRH, &UBRRL, &UCSRA, &UCSRB, &UDR, RXEN, TXEN, RXCIE, UDRIE, U2X, &serialEvent_bufferingSize, &serialEvent_triggerChar, &serialEvent_buffered);
 #elif defined(UBRR0H) && defined(UBRR0L)
-  HardwareSerial Serial(&rx_buffer, &tx_buffer, &UBRR0H, &UBRR0L, &UCSR0A, &UCSR0B, &UDR0, RXEN0, TXEN0, RXCIE0, UDRIE0, U2X0);
+  HardwareSerial Serial(&rx_buffer, &tx_buffer, &UBRR0H, &UBRR0L, &UCSR0A, &UCSR0B, &UDR0, RXEN0, TXEN0, RXCIE0, UDRIE0, U2X0, &serialEvent_bufferingSize, &serialEvent_triggerChar, &serialEvent_buffered);
 #elif defined(USBCON)
   #warning no serial port defined  (port 0)
 #else
@@ -428,13 +479,13 @@ size_t HardwareSerial::write(uint8_t c)
 #endif
 
 #if defined(UBRR1H)
-  HardwareSerial Serial1(&rx_buffer1, &tx_buffer1, &UBRR1H, &UBRR1L, &UCSR1A, &UCSR1B, &UDR1, RXEN1, TXEN1, RXCIE1, UDRIE1, U2X1);
+  HardwareSerial Serial1(&rx_buffer1, &tx_buffer1, &UBRR1H, &UBRR1L, &UCSR1A, &UCSR1B, &UDR1, RXEN1, TXEN1, RXCIE1, UDRIE1, U2X1, NULL, NULL, NULL);
 #endif
 #if defined(UBRR2H)
-  HardwareSerial Serial2(&rx_buffer2, &tx_buffer2, &UBRR2H, &UBRR2L, &UCSR2A, &UCSR2B, &UDR2, RXEN2, TXEN2, RXCIE2, UDRIE2, U2X2);
+  HardwareSerial Serial2(&rx_buffer2, &tx_buffer2, &UBRR2H, &UBRR2L, &UCSR2A, &UCSR2B, &UDR2, RXEN2, TXEN2, RXCIE2, UDRIE2, U2X2, NULL, NULL, NULL);
 #endif
 #if defined(UBRR3H)
-  HardwareSerial Serial3(&rx_buffer3, &tx_buffer3, &UBRR3H, &UBRR3L, &UCSR3A, &UCSR3B, &UDR3, RXEN3, TXEN3, RXCIE3, UDRIE3, U2X3);
+  HardwareSerial Serial3(&rx_buffer3, &tx_buffer3, &UBRR3H, &UBRR3L, &UCSR3A, &UCSR3B, &UDR3, RXEN3, TXEN3, RXCIE3, UDRIE3, U2X3, NULL, NULL, NULL);
 #endif
 
 #endif // whole file
