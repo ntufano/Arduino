@@ -75,17 +75,14 @@ const uint16_t STRING_IMANUFACTURER[12] = {
 	'A','r','d','u','i','n','o',' ','L','L','C'
 };
 
-#ifdef CDC_ENABLED
-#define DEVICE_CLASS 0x02
-#else
+#ifdef HID_ENABLED
 #define DEVICE_CLASS 0x00
+#else
+#define DEVICE_CLASS 0x02
 #endif
 
 //	DEVICE DESCRIPTOR
 const DeviceDescriptor USB_DeviceDescriptor =
-	D_DEVICE(0x00,0x00,0x00,64,USB_VID,USB_PID,0x100,IMANUFACTURER,IPRODUCT,0,1);
-
-const DeviceDescriptor USB_DeviceDescriptorA =
 	D_DEVICE(DEVICE_CLASS,0x00,0x00,64,USB_VID,USB_PID,0x100,IMANUFACTURER,IPRODUCT,0,1);
 
 const DeviceDescriptor USB_DeviceQualifier =
@@ -386,11 +383,7 @@ static bool USBD_SendDescriptor(Setup& setup)
 	if (USB_DEVICE_DESCRIPTOR_TYPE == t)
 	{
 		TRACE_CORE(puts("=> USBD_SendDescriptor : USB_DEVICE_DESCRIPTOR_TYPE\r\n");)
-		if (setup.wLength == 8)
-		{
-			_cdcComposite = 1;
-		}
-		desc_addr = _cdcComposite ?  (const uint8_t*)&USB_DeviceDescriptorA : (const uint8_t*)&USB_DeviceDescriptor;
+		desc_addr = (const uint8_t*)&USB_DeviceDescriptor;
         if( *desc_addr > setup.wLength ) {
             desc_length = setup.wLength;
         }
