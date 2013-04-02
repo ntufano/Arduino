@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="1.0">
+	<info organisation="arduino" module="Servo" revision="1.0" status="release" publication="20130401223220"/>
+	<publications>
+		<artifact name="Servo" type="zip"/>
+	</publications>
+</ivy-module>

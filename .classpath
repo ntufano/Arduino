@@ -15,5 +15,6 @@
 	<classpathentry kind="lib" path="app/test-lib/fest-swing-1.2.jar" sourcepath="/home/megabug/git/fest-swing-1.2-sources.jar"/>
 	<classpathentry kind="lib" path="app/test-lib/fest-util-1.1.2.jar"/>
 	<classpathentry kind="lib" path="app/test-lib/jcip-annotations-1.0.jar"/>
+	<classpathentry kind="lib" path="app/lib/ivy-2.3.0.jar" sourcepath="/Users/megabug/Code/apache-ivy-2.3.0/src/java"/>
 	<classpathentry kind="output" path="app/bin"/>
 </classpath>

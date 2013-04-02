@@ -1,0 +1,6 @@
+<ivy-module version="1.0">
+    <info organisation="arduino" module="Servo" />
+    <publications>
+      <artifact name="Servo" type="zip" ext="zip" />
+    </publications>
+</ivy-module>

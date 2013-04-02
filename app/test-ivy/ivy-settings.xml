@@ -1,0 +1,14 @@
+<ivysettings>
+  <setting defaultResolver="arduino" />
+  
+  <resolvers>
+    <chain name="arduino">
+      <url name="1">
+        <ivy pattern="http://bug.st/ivy/[organisation]/[module]/[revision]/ivy-[revision].xml" />
+		<artifact pattern="http://bug.st/ivy/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+      </url>  
+    </chain>
+  </resolvers>
+
+  <include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
+</ivysettings>
