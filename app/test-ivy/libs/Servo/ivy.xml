@@ -1,10 +1,10 @@
-<ivy-module version="1.0">
+<ivy-module version="2.0">
 	<info 
 		organisation="arduino"
 		module="Servo"
 		revision="1.0"
 		status="release" />
 	<publications>
-		<artifact name="Servo" type="zip" />
+		<artifact name="Servo" type="zip" conf="default" />
 	</publications>
 </ivy-module>

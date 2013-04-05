@@ -3,7 +3,9 @@ package processing.app.packager;
 import static java.lang.System.out;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
@@ -12,9 +14,11 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.ivy.Ivy;
+import org.apache.ivy.core.module.descriptor.ModuleDescriptor;
 import org.apache.ivy.core.module.id.ModuleId;
 import org.apache.ivy.core.module.id.ModuleRevisionId;
 import org.apache.ivy.core.publish.PublishOptions;
+import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.repository.RepositoryManagementEngine;
 import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.retrieve.RetrieveOptions;
@@ -26,10 +30,12 @@ public class Packager {
 
   private Ivy ivy;
   private File folder;
+  private File libFolder;
   private PackageMantainer mantainer;
 
   public Packager(File _folder) throws ParseException, IOException {
     folder = _folder;
+    libFolder = new File(_folder, "libraries");
 
     IvySettings settings = new IvySettings();
     settings.setDefaultIvyUserDir(folder);
@@ -46,20 +52,19 @@ public class Packager {
     loggerEngine.setDefaultLogger(new DefaultMessageLogger(level));
   }
 
-  public void load() {
+  public int load() {
     RepositoryManagementEngine engine = ivy.getRepositoryEngine();
     engine.load();
-    int n = engine.getModuleIdsNumber();
-    out.println("Num. of modules ids: " + n);
+    return engine.getModuleIdsNumber();
   }
 
-  public void resolve(File xml, String revision) throws ParseException,
-      IOException {
+  public ResolveReport resolve(File xml, String revision)
+      throws ParseException, IOException {
     ResolveOptions opt = new ResolveOptions();
     opt.setRevision(revision);
     try {
       URL url = xml.toURI().toURL();
-      ivy.resolve(url, opt);
+      return ivy.resolve(url, opt);
     } catch (MalformedURLException e) {
       // Should never happen, but...
       throw new IOException("Malformed URL.", e);
@@ -97,36 +102,60 @@ public class Packager {
     mantainer = _mantainer;
   }
 
-  public void retrieve(File baseDir, String owner, String module,
-                       String revision) throws IOException, ParseException {
-    ModuleId mid = new ModuleId(owner, module);
-    ModuleRevisionId mrid = new ModuleRevisionId(mid, revision);
+  public void retrieve(String org, String module, String rev)
+      throws IOException, ParseException {
+    File xml = File.createTempFile("arduino", ".xml");
+    try {
+      PrintStream xmlOut = new PrintStream(new FileOutputStream(xml));
+      xmlOut.println("<ivy-module version=\"2.0\">");
+      xmlOut.println("  <info organisation=\"me\" module=\"mod\" />");
+      xmlOut.println("  <dependencies>");
+      xmlOut.println("    <dependency org=\"" + org + "\" name=\"" + module +
+          "\" rev=\"" + rev + "\">");
+      xmlOut.println("      <artifact name=\"" + module + "\" type=\"zip\" />");
+      xmlOut.println("    </dependency>");
+      xmlOut.println("  </dependencies>");
+      xmlOut.println("</ivy-module>");
+      xmlOut.close();
 
-    // ResolveOptions opts = new ResolveOptions();
-    // ivy.resolve(mrid, opts, false);
+      ivyRetrieve(xml);
+    } finally {
+      xml.delete();
+    }
+  }
+
+  public void ivyRetrieve(File xml) throws IOException, ParseException {
+    URL url;
+    try {
+      url = xml.toURI().toURL();
+    } catch (MalformedURLException e) {
+      // Should never happen, but...
+      throw new IOException("Malformed URL.", e);
+    }
+    ResolveOptions opt = new ResolveOptions();
+    ResolveReport report = ivy.resolve(url, opt);
 
     RetrieveOptions options = new RetrieveOptions();
-    options.setDestArtifactPattern(baseDir.getAbsolutePath() +
-        "/[artifact].[ext]");
-    options.setDestIvyPattern(baseDir.getAbsolutePath() +
-        "/ivy-[artifact].[ext]");
-    ivy.retrieve(mrid, options);
+    String destFilePattern = libFolder.getAbsolutePath() +
+        "/[organization]-[artifact]-[revision].[ext]";
+    ModuleDescriptor md = report.getModuleDescriptor();
+    ModuleRevisionId mrid = md.getModuleRevisionId();
+    ivy.retrieve(mrid, destFilePattern, options);
   }
 
   public static void main(String args[]) throws ParseException, IOException,
       PackagerException {
-    PackageMantainer mant = new PackageMantainer("arduino", "", "");
+    PackageMantainer mant = new PackageMantainer("arduino", "abc",
+        "abc@arduino.cc");
     Packager packager = new Packager(new File("app/test-ivy"));
-    packager.setLogLevel(10);
+    packager.setLogLevel(100);
     packager.setMantainer(mant);
-    packager.load();
+    // out.println("Num. of modules ids: " + packager.load());
 
     // packager.resolve(new File("app/test-ivy/libs/Servo/ivy.xml"), "1.0");
     // packager.publish(new File("app/test-ivy/libs/Servo"), "Servo", "1.0");
 
-    packager.resolve(new File("app/test-ivy/libs/ivy-xxx-1.0.xml"), "1.0");
-    packager.retrieve(new File("app/test-ivy/libraries"), "arduino", "Servo",
-                      "1.0");
+    packager.retrieve("arduino", "Servo", "1.0");
   }
 
 }

@@ -1,6 +1,0 @@
-<ivy-module version="1.0">
-	<info organisation="arduino" module="xxx" />
-	<dependencies>
-		<dependency org="arduino" name="Servo" rev="1.0" />
-	</dependencies>
-</ivy-module>
