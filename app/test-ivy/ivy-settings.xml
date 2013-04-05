@@ -1,14 +1,26 @@
 <ivysettings>
-  <setting defaultResolver="arduino" />
+  <settings defaultResolver="default" />
+  
+  <include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
   
   <resolvers>
-    <chain name="arduino">
-      <url name="1">
-        <ivy pattern="http://bug.st/ivy/[organisation]/[module]/[revision]/ivy-[revision].xml" />
-		<artifact pattern="http://bug.st/ivy/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
-      </url>  
+    <filesystem name="public">
+      <ivy pattern="${ivy.default.ivy.user.dir}/public/[organisation]/[module]/[module]-[revision].xml" />
+      <artifact pattern="${ivy.default.ivy.user.dir}/public/[organisation]/[module]/[artifact]-[revision].[ext]" />
+    </filesystem>
+    <url name="arduino">
+      <ivy pattern="http://xxx.com/ivy/[organisation]/[module]/[revision]/[module]-[revision].xml" />
+	  <artifact pattern="http://xxx.com/ivy/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+    </url>
+
+    <chain name="main" dual="true">
+      <resolver ref="public"/>
+    </chain>
+
+    <chain name="default" returnFirst="true">
+      <resolver ref="local"/>
+      <resolver ref="main"/>
     </chain>
   </resolvers>
 
-  <include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
 </ivysettings>

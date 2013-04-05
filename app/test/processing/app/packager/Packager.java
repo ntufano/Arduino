@@ -17,6 +17,7 @@ import org.apache.ivy.core.module.id.ModuleRevisionId;
 import org.apache.ivy.core.publish.PublishOptions;
 import org.apache.ivy.core.repository.RepositoryManagementEngine;
 import org.apache.ivy.core.resolve.ResolveOptions;
+import org.apache.ivy.core.retrieve.RetrieveOptions;
 import org.apache.ivy.core.settings.IvySettings;
 import org.apache.ivy.util.DefaultMessageLogger;
 import org.apache.ivy.util.MessageLoggerEngine;
@@ -73,7 +74,7 @@ public class Packager {
     List<String> srcArtifactPattern = new ArrayList<String>();
     srcArtifactPattern.add(baseDir.getAbsolutePath() + "/[artifact].[ext]");
 
-    String resolver = "local";
+    String resolver = "public";
     // String resolver = "arduino";
 
     ModuleId mid = new ModuleId(mantainer.getUsername(), module);
@@ -82,6 +83,9 @@ public class Packager {
     PublishOptions opts = new PublishOptions();
     opts.setPubrevision(revision);
     opts.setPubdate(new Date());
+    opts.setOverwrite(true);
+    opts.setValidate(true);
+    opts.setSrcIvyPattern(baseDir.getAbsolutePath() + "/ivy.xml");
     ivy.publish(mrid, srcArtifactPattern, resolver, opts);
   }
 
@@ -93,14 +97,36 @@ public class Packager {
     mantainer = _mantainer;
   }
 
+  public void retrieve(File baseDir, String owner, String module,
+                       String revision) throws IOException, ParseException {
+    ModuleId mid = new ModuleId(owner, module);
+    ModuleRevisionId mrid = new ModuleRevisionId(mid, revision);
+
+    // ResolveOptions opts = new ResolveOptions();
+    // ivy.resolve(mrid, opts, false);
+
+    RetrieveOptions options = new RetrieveOptions();
+    options.setDestArtifactPattern(baseDir.getAbsolutePath() +
+        "/[artifact].[ext]");
+    options.setDestIvyPattern(baseDir.getAbsolutePath() +
+        "/ivy-[artifact].[ext]");
+    ivy.retrieve(mrid, options);
+  }
+
   public static void main(String args[]) throws ParseException, IOException,
       PackagerException {
     PackageMantainer mant = new PackageMantainer("arduino", "", "");
     Packager packager = new Packager(new File("app/test-ivy"));
     packager.setLogLevel(10);
     packager.setMantainer(mant);
-    packager.resolve(new File("app/test-ivy/libs/Servo/ivy.xml"), "1.0");
-    packager.publish(new File("app/test-ivy/libs/Servo"), "Servo", "1.0");
+    packager.load();
+
+    // packager.resolve(new File("app/test-ivy/libs/Servo/ivy.xml"), "1.0");
+    // packager.publish(new File("app/test-ivy/libs/Servo"), "Servo", "1.0");
+
+    packager.resolve(new File("app/test-ivy/libs/ivy-xxx-1.0.xml"), "1.0");
+    packager.retrieve(new File("app/test-ivy/libraries"), "arduino", "Servo",
+                      "1.0");
   }
 
 }
