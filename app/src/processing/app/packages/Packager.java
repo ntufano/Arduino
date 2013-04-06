@@ -1,4 +1,4 @@
-package processing.app.packager;
+package processing.app.packages;
 
 import static java.lang.System.out;
 

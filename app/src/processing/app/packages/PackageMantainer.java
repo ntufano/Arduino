@@ -1,4 +1,4 @@
-package processing.app.packager;
+package processing.app.packages;
 
 public class PackageMantainer {
 

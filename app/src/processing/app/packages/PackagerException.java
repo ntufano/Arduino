@@ -1,4 +1,4 @@
-package processing.app.packager;
+package processing.app.packages;
 
 @SuppressWarnings("serial")
 public class PackagerException extends Exception {
