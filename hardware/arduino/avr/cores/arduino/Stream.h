@@ -24,6 +24,7 @@
 
 #include <inttypes.h>
 #include "Print.h"
+#include "Reader.h"
 
 // compatability macros for testing
 /*
@@ -35,7 +36,7 @@
 readBytesBetween( pre_string, terminator, buffer, length)
 */
 
-class Stream : public Print
+class Stream : public Print, public Reader
 {
   protected:
     unsigned long _timeout;      // number of milliseconds to wait for the next char before aborting timed read
@@ -45,12 +46,6 @@ class Stream : public Print
     int peekNextDigit(); // returns the next numeric digit in the stream or -1 if timeout
 
   public:
-    virtual int available() = 0;
-    virtual int read() = 0;
-    virtual size_t read(uint8_t *buffer, size_t size);
-    virtual int peek() = 0;
-    virtual void flush() = 0;
-
     Stream() {_timeout=1000;}
 
 // parsing methods

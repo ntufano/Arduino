@@ -23,19 +23,6 @@
 #include "Arduino.h"
 #include "Stream.h"
 
-/* default implementation: may be overridden */
-size_t Stream::read(uint8_t *buffer, size_t size)
-{
-  size_t n = 0;
-  do {
-	int c = read();
-	if (c==-1)
-	  break;
-	buffer[n++] = c;
-  } while (n<size);
-  return n;
-}
-
 #define PARSE_TIMEOUT 1000  // default number of milli-seconds to wait
 #define NO_SKIP_CHAR  1  // a magic char not found in a valid ASCII numeric field
 
